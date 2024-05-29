@@ -12,9 +12,14 @@ from ELICUtilis.layers import (
     CheckboardMaskedConv2d,
 )
 
-from compressai.models.priors import CompressionModel, GaussianConditional
-from compressai.ops import ste_round
+from compressai.models.priors import CompressionModel
+from compressai.entropy_models import EntropyBottleneck, GaussianConditional
+
+# from compressai.models.priors import CompressionModel, GaussianConditional
+from compressai.ops import quantize_ste
 from compressai.models.utils import conv, deconv, update_registered_buffers
+
+
 
 from thop import profile
 from ptflops import get_model_complexity_info
@@ -198,7 +203,7 @@ class TestModel(CompressionModel):
         if not noisequant:
             z_offset = self.entropy_bottleneck._get_medians()
             z_tmp = z - z_offset
-            z_hat = ste_round(z_tmp) + z_offset
+            z_hat = quantize_ste(z_tmp) + z_offset
 
         latent_means, latent_scales = self.h_s(z_hat).chunk(2, 1)
 
@@ -544,7 +549,7 @@ class TestModel(CompressionModel):
         z_hat, z_likelihoods = self.entropy_bottleneck(z)
         z_offset = self.entropy_bottleneck._get_medians()
         z_tmp = z - z_offset
-        z_hat = ste_round(z_tmp) + z_offset
+        z_hat = quantize_ste(z_tmp) + z_offset
 
         z_dec_start = time.time()
         latent_means, latent_scales = self.h_s(z_hat).chunk(2, 1)
@@ -662,3 +667,4 @@ if __name__ == "__main__":
     print('flops: ', flops, 'params: ', params)
     flops, params = profile(model, (input,))
     print('flops: ', flops, 'params: ', params)
+    
